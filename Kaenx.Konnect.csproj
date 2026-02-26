@@ -26,6 +26,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Kaenx.Konnect.Tests\**" />
+    <EmbeddedResource Remove="Kaenx.Konnect.Tests\**" />
+    <None Remove="Kaenx.Konnect.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\License" Pack="True" PackagePath="\" />
     <None Include="..\Readme.md" Pack="True" PackagePath="\" />
   </ItemGroup>
