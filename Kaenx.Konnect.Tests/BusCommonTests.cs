@@ -1,6 +1,8 @@
-﻿using Kaenx.Konnect.Classes;
+﻿using Kaenx.Konnect.Addresses;
+using Kaenx.Konnect.Classes;
+using Kaenx.Konnect.EMI.DataMessages;
+using Kaenx.Konnect.EMI.LData;
 using System.Net;
-using Kaenx.Konnect.Addresses;
 using Xunit;
 
 namespace Kaenx.Konnect.Tests
@@ -35,6 +37,24 @@ namespace Kaenx.Konnect.Tests
             await sut.GroupValueWrite(ga, data);
 
             await conn.Disconnect();
+        }
+
+        [Fact]
+        public async Task GroupValueRead_ReceivesValueFromGA()
+        {
+            var endpoint = new IPEndPoint(IPAddress.Parse("192.168.178.167"), 3671);
+            var conn = KnxFactory.CreateTunnelingUdp(endpoint);
+            await conn.Connect();
+
+            var sut = new BusCommon(conn);
+            MulticastAddress ga = MulticastAddress.FromString("1/4/58");
+
+            LDataBase? response = await sut.GroupValueRead(ga);
+            GroupValueResponse? content = response?.GetContent<GroupValueResponse>();
+            await conn.Disconnect();
+
+            Assert.NotNull(content);
+            Assert.NotEmpty(content.Data);
         }
     }
 }
