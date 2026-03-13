@@ -148,7 +148,7 @@ namespace Kaenx.Konnect.Connections.Protocols
                         if (request.GetConnectionHeader().SequenceCounter > _lastReceivedSequenceCounter)
                             _lastReceivedSequenceCounter = request.GetConnectionHeader().SequenceCounter;
 
-                        if (request.MessageCode == MessageCodes.L_Data_ind)
+                        if (request.MessageCode == MessageCodes.L_Data_ind || request.MessageCode == MessageCodes.L_Data_con)
                         {
                             EmiContent? emiContent = request.Contents.OfType<EmiContent>().FirstOrDefault();
                             if (emiContent == null)
@@ -184,23 +184,38 @@ namespace Kaenx.Konnect.Connections.Protocols
 
         public async void KeepAliveCallback(object? state)
         {
+            try
+            {
+                await KeepAliveAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[KeepAlive] Error: {ex.Message}");
+                IsConnected = false;
+            }
+        }
+
+        private async Task KeepAliveAsync()
+        {
             ConnectionStateRequest csreq = new ConnectionStateRequest(_channelId, GetLocalEndpoint(), _transport.GetProtocolType());
+
             _connectToken = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             await SendAsync(csreq);
 
             try
             {
                 await Task.Delay(3000, _connectToken.Token);
+                IsConnected = false;
+                Debug.WriteLine("[KeepAlive] Timeout — connection lost");
             }
             catch (TaskCanceledException)
             {
                 if (_connectionResponseCode != IpErrors.NoError)
-                    throw new InterfaceException("ConnectionStateResponse returned " + _connectionResponseCode.ToString());
-                // Everything ok
-                return;
+                {
+                    IsConnected = false;
+                    Debug.WriteLine($"[KeepAlive] Error response: {_connectionResponseCode}");
+                }
             }
-            
-            throw new TimeoutException("ConnectionStateRequest timed out");
         }
 
         public override async Task SendAsync(IpTelegram ipTelegram)
