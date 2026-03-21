@@ -39,7 +39,11 @@ namespace Kaenx.Konnect.Connections.Transports
 
         private void Init(IPAddress ip, IPEndPoint _target, bool isMulticast = false, IPEndPoint? _source = null)
         {
-            client = new UdpClient(new IPEndPoint(ip, 0));
+            if (isMulticast)
+                client = new UdpClient(new IPEndPoint(IPAddress.Any, _target.Port)); 
+            else
+                client = new UdpClient(new IPEndPoint(ip, 0));
+
             client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, false);
             if (isMulticast)
