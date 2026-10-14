@@ -232,9 +232,6 @@ namespace Kaenx.Konnect.Connections.Protocols
 
         public override async Task<int> SendAsync(LDataBase message)
         {
-            if (!IsConnected)
-                throw new InterfaceNotConnectedException();
-
             byte sequenceCounter = _sequenzeCounter;
             _sequenzeCounter = (byte)((_sequenzeCounter + 1) % 256);
 
