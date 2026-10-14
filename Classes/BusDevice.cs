@@ -1022,6 +1022,40 @@ namespace Kaenx.Konnect.Classes
                 try { info.PeiType = await PropertyRead<byte>(0, Pid.PeiType); } catch { }
             }
 
+            // ── ETS6 "Allgemein": Hardware-Typ / Busspannung ───────────────────
+            try
+            {
+                byte[] hw = await PropertyRead(0, Pid.HardwareType);
+                info.HardwareType = "$" + Convert.ToHexString(hw);
+            }
+            catch { }
+            try
+            {
+                byte v = await PropertyRead<byte>(0, Pid.BusVoltage);
+                info.BusVoltage = $"{v / 10.0:0.0}".Replace('.', ',') + "V";
+            }
+            catch { }
+
+            // ── ETS6 "Sicherheit": KNX Secure Modus + Fehlerzähler ────────────
+            try
+            {
+                byte sec = await PropertyRead<byte>(0, Pid.SecurityMode);
+                info.SecurityMode = sec != 0 ? "Ein" : "Aus";
+            }
+            catch { }
+            try
+            {
+                byte[] counters = await PropertyRead(0, Pid.SecurityFailureCounters);
+                info.SecurityFailureCounters = FormatSecurityCounters(counters);
+            }
+            catch { }
+            try
+            {
+                byte[] last = await PropertyRead(0, Pid.SecurityLastFailure);
+                info.SecurityLastFailure = Convert.ToHexString(last);
+            }
+            catch { }
+
             // ── Objekt-Landkarte EINMAL lesen (PID_IO_LIST) statt jeden Objekt-Typ einzeln zu scannen ──
             // Reduziert die Bus-Last massiv (1 Read statt bis zu ~120 Probe-Reads) und vermeidet
             // dadurch TunnelingAck-Timeouts, die der alte Scan-Ansatz auf dem Bus verursacht hat.
@@ -1109,6 +1143,11 @@ namespace Kaenx.Konnect.Classes
             public const uint FirmwareRevision = 9;   // 1 Byte
             public const uint OrderInfo = 15;  // 10 Byte ASCII
             public const uint PeiType = 16;  // 1 Byte
+            public const uint HardwareType = 29;  // 6 Byte, herstellerspezifisch
+            public const uint BusVoltage = 30;  // 1 Byte, 0,1 V
+            public const uint SecurityMode = 31;  // 1 Byte
+            public const uint SecurityFailureCounters = 32;  // 5+ Byte
+            public const uint SecurityLastFailure = 33;  // 12 Byte
 
             // Gemeinsame Properties, gültig an mehreren Interface Objects
             public const uint LoadStateControl = 5;   // 1 Byte
@@ -1208,6 +1247,40 @@ namespace Kaenx.Konnect.Classes
             5 => "Wird beendet",
             _ => $"Unbekannt (${b:X2})"
         };
+
+        /// <summary>
+        /// Formatiert PID_SECURITY_FAILURE_COUNTERS wie ETS6:
+        /// "Sequenznummer / Kryptographische Fehler erkannt / Zähler für Zugriffs- oder Rollenfehler".
+        /// GIRA liefert 10 Byte: [4 Byte Prefix][Seq 2 BE][Crypto 2 BE][Access 2 BE];
+        /// Fallback für 5 Byte: Seq 2 BE + Crypto 2 BE + Access 1.
+        /// </summary>
+        private static string FormatSecurityCounters(byte[] data)
+        {
+            if (data == null || data.Length == 0) return string.Empty;
+
+            int n = data.Length;
+            int seq, crypto, access;
+            if (n >= 6)
+            {
+                seq = (data[n - 6] << 8) | data[n - 5];
+                crypto = (data[n - 4] << 8) | data[n - 3];
+                access = (data[n - 2] << 8) | data[n - 1];
+            }
+            else if (n >= 5)
+            {
+                seq = (data[0] << 8) | data[1];
+                crypto = (data[2] << 8) | data[3];
+                access = data[4];
+            }
+            else
+            {
+                return Convert.ToHexString(data);
+            }
+
+            return $"Sequenznummer: {seq}\n" +
+                   $"Kryptographische Fehler erkannt: {crypto}\n" +
+                   $"Zähler für Zugriffs- oder Rollenfehler: {access}";
+        }
 
         private async Task<string?> TryReadLoadStateAsync(int? objIdx)
         {
