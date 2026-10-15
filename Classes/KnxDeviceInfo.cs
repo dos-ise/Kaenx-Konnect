@@ -38,5 +38,11 @@ namespace Kaenx.Konnect.Classes
         public string? AddressTableLoadState { get; set; }
         public string? AssociationTableLoadState { get; set; }
         public string? ObjectTableLoadState { get; set; }
+
+        // ETS6 "Allgemein" / "Sicherheit"
+        public string? BusVoltage { get; set; }          // PID_BUS_VOLTAGE (30), z.B. "30,0V"
+        public string? SecurityMode { get; set; }        // PID_SECURITY_MODE (31), "Ein"/"Aus"
+        public string? SecurityFailureCounters { get; set; }  // PID_SECURITY_FAILURE_COUNTERS (32)
+        public string? SecurityLastFailure { get; set; }      // PID_SECURITY_LAST_FAILURE (33)
     }
 }
